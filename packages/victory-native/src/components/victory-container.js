@@ -12,14 +12,19 @@ const no = () => false;
 
 export default class extends VictoryContainer {
   static propTypes = assign({}, VictoryContainer.propTypes, {
+    unblockNativeResponder: PropTypes.bool,
     disableContainerEvents: PropTypes.bool,
     onTouchEnd: PropTypes.func,
     onTouchStart: PropTypes.func,
+    onScrollHandler: PropTypes.func,
   });
 
   constructor(props) {
     super(props);
     this.panResponder = this.getResponder();
+    this.state = {
+      touchReleased: true,
+    };
   }
 
   getResponder() {
@@ -31,7 +36,8 @@ export default class extends VictoryContainer {
         this.props.allowResize ||
         this.props.allowSelection ||
         this.props.allowPan ||
-        this.props.allowZoom)
+        this.props.allowZoom) &&
+      !this.props.unblockNativeResponder
     ) {
       shouldBlockNativeResponder = yes;
     }
@@ -74,11 +80,24 @@ export default class extends VictoryContainer {
     this.callOptionalEventCallback("onTouchStart", evt);
   }
 
-  handleResponderMove(evt) {
+  handleResponderMove(evt, gestureState) {
     const { touches } = evt.nativeEvent;
     if (touches && touches.length === 2) {
       this.callOptionalEventCallback("onTouchPinch", evt);
     } else {
+      /**
+       * This is a fix for ScrollView stops the panResponder mid-animation
+       * and prioritizes scrolling when user moves their finger up/down during panning.
+       */
+      const pan = Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      if (this.state.touchReleased && !pan) {
+        if (this.props.onScrollHandler) {
+          this.props.onScrollHandler(true);
+        }
+      } else if (this.props.onScrollHandler) {
+        this.props.onScrollHandler(false);
+        this.setState({ touchReleased: false });
+      }
       this.callOptionalEventCallback("onTouchMove", evt);
     }
   }
@@ -86,6 +105,10 @@ export default class extends VictoryContainer {
   handleResponderEnd(evt) {
     if (this.props.onTouchEnd) {
       this.props.onTouchEnd(evt);
+    }
+    if (this.props.onScrollHandler) {
+      this.setState({ touchReleased: true });
+      this.props.onScrollHandler(true);
     }
     this.callOptionalEventCallback("onTouchEnd", evt);
   }
