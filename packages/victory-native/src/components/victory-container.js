@@ -13,8 +13,10 @@ const no = () => false;
 export default class extends VictoryContainer {
   static propTypes = assign({}, VictoryContainer.propTypes, {
     disableContainerEvents: PropTypes.bool,
+    unblockNativeResponder: PropTypes.bool,
     onTouchEnd: PropTypes.func,
-    onTouchStart: PropTypes.func
+    onTouchStart: PropTypes.func,
+    onScrollHandler: PropTypes.func
   });
 
   constructor(props) {
